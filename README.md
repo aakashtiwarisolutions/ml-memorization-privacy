@@ -34,7 +34,7 @@ Attack success is measured with AUC (0.5 = guessing) and the true positive rate 
 | 20 | 0.966 | 0.858 | 0.107 | 0.581 |
 | None | 0.992 | 0.847 | 0.145 | 0.621 |
 
-![Accuracy and leakage vs depth](figures/1_accuracy_and_leakage_vs_depth)
+![Accuracy and leakage vs depth](figures/1_accuracy_and_leakage_vs_depth.png)
 
 Leakage grows with the gap between train and test accuracy. The deeper the trees, the more the model memorizes its training data.
 
