@@ -1,95 +1,105 @@
-# Memorization and Privacy in Machine Learning: Membership Inference Attacks and Defenses
+# Membership Inference Attacks: Measuring Training Data Leakage and Defenses
 
-Can an attacker tell whether a person's record was used to train a model? This project trains income prediction models on the Adult Census dataset, attacks them with two membership inference attacks, measures how memorization affects privacy leakage, and tests three defenses.
+Can someone tell whether a person's record was used to train a model? This project trains income prediction models on the Adult Census dataset, attacks them with two membership inference attacks, studies what makes leakage worse, and tests three defenses.
 
 **Author:** Aakash Tiwari, M.S. Cybersecurity, Rowan University
 
+## Main results
+
+| Result | Value |
+|--------|-------|
+| Attack AUC, depth 2 vs unrestricted forest (mean of 5 splits) | 0.503 → 0.627 |
+| Correlation between train-test gap and attack AUC | 0.994 |
+| Confidence attack: AUC / TPR at 1% FPR | 0.621 / 0.000 |
+| Shadow model attack: AUC / TPR at 1% FPR | 0.654 / 0.025 |
+| Best defense (max_depth=10): attack AUC / test accuracy | 0.520 / 0.858 |
+
+AUC of 0.5 means the attacker is guessing. TPR at 1% FPR is the share of members caught while wrongly flagging only 1% of non-members.
+
 ## Data
 
-Adult Census Income from the UCI Machine Learning Repository (Becker & Kohavi, 1996): 32,561 records, 30,162 after removing rows with missing values. The task is predicting whether income is above $50K. The notebook loads the data directly from a public copy on GitHub.
+Adult Census Income from the UCI Machine Learning Repository (Becker & Kohavi, 1996). 30,162 records after removing missing values. The task is predicting whether income is above $50K. The notebook downloads the data by itself.
 
-| Part | Size | Role |
-|------|------|------|
-| Members | 5,000 | Used to train the target model |
+| Group | Records | Role |
+|-------|---------|------|
+| Members | 5,000 | Training data for the target model |
 | Non-members | 5,000 | Never seen by the target model |
 | Shadow pool | 15,081 | Data the attacker owns |
 
+![Dataset overview](figures/01_dataset_overview.png)
+
 ## Attacks
 
-- **Confidence threshold:** uses the probability the model gives to the true label. Members tend to get higher confidence.
-- **Shadow models:** the attacker trains 4 random forests on their own data, then trains an attack model (gradient boosting) on their outputs to learn what membership looks like (Shokri et al., 2017). The attacker is assumed to know the target model type.
+- **Confidence attack:** uses how confident the model is about the true label. Members tend to get higher confidence.
+- **Shadow model attack:** the attacker trains shadow random forests on their own data, then a gradient boosting model that learns what membership looks like (Shokri et al., 2017).
 
-Attack success is measured with AUC (0.5 = guessing) and the true positive rate at a 1% false positive rate (TPR at 1% FPR).
+![Confidence distributions](figures/02_confidence_distributions.png)
+
+The model is much more confident on its training records. That gap is what the attacks use.
 
 ## Results
 
-### Memorization and leakage (random forest, confidence attack)
+### Deeper trees leak more
 
-| max_depth | Train acc | Test acc | Gap | Attack AUC |
-|-----------|-----------|----------|-----|------------|
-| 2 | 0.763 | 0.765 | -0.002 | 0.500 |
-| 6 | 0.849 | 0.841 | 0.008 | 0.506 |
-| 10 | 0.874 | 0.858 | 0.017 | 0.520 |
-| 15 | 0.918 | 0.861 | 0.058 | 0.553 |
-| 20 | 0.966 | 0.858 | 0.107 | 0.581 |
-| None | 0.992 | 0.847 | 0.145 | 0.621 |
+![Accuracy and leakage vs depth](figures/03_accuracy_and_leakage_vs_depth.png)
 
-![Accuracy and leakage vs depth](figures/1_accuracy_and_leakage_vs_depth.png)
+![Gap vs leakage](figures/04_gap_vs_leakage.png)
 
-Leakage grows with the gap between train and test accuracy. The deeper the trees, the more the model memorizes its training data.
+Repeated over 5 random splits. Leakage grows with the gap between train and test accuracy (r = 0.994).
 
-### Attacks on the unrestricted forest
+### Shadow models are the stronger attack
 
-| Attack | AUC | TPR at 1% FPR |
-|--------|-----|---------------|
-| Confidence threshold | 0.621 | 0.000 |
-| Shadow models | 0.654 | 0.025 |
+![ROC curves](figures/05_roc_attacks.png)
 
-![ROC curves of both attacks](figures/2_roc_attacks.png)
+![Number of shadow models](figures/06_shadow_models_count.png)
 
-The shadow model attack is stronger. The confidence attack gets 0 at 1% FPR because many members and non-members both receive a confidence of exactly 1.0, so the attacker cannot separate them at that strict threshold.
+The shadow attack wins, especially at low false positive rates. One or two shadow models are already enough.
+
+### Smaller training sets leak more
+
+![Training size vs leakage](figures/07_training_size_vs_leakage.png)
 
 ### Defenses
 
-| Defense | Test acc | Attack AUC |
-|---------|----------|------------|
+| Defense | Test accuracy | Attack AUC |
+|---------|---------------|------------|
 | No defense | 0.847 | 0.621 |
 | Round outputs to 1 decimal | 0.847 | 0.618 |
 | Label only | 0.847 | 0.572 |
 | Regularization (max_depth=10) | 0.858 | 0.520 |
 
-![Privacy vs accuracy](figures/3_privacy_vs_accuracy.png)
+![Defense comparison](figures/08_defense_comparison.png)
 
-- Rounding the output barely helped.
-- Returning only the label reduced leakage but did not remove it.
-- Regularization reduced leakage the most and also improved test accuracy, because the unrestricted model was overfitting.
+![Privacy vs accuracy](figures/09_privacy_vs_accuracy.png)
+
+![Rounding precision](figures/10_rounding_precision.png)
+
+Regularization reduced leakage the most and also improved accuracy, because the unrestricted model was overfitting. Rounding barely helped. Label only helped but did not remove leakage.
 
 ### Who is most at risk
 
-| Group | Records | Attack AUC |
-|-------|---------|------------|
-| Common profile | 9,270 | 0.619 |
-| Rare profile (native country and occupation shared by fewer than 20 people) | 730 | 0.640 |
+![Risk by profile](figures/11_risk_by_profile.png)
 
-Records with rare profiles had a slightly higher attack AUC. The gap is small and comes from a single split, so it should be confirmed with repeated runs.
+Records with rare profiles (native country and occupation shared by fewer than 20 people) had a slightly higher attack AUC (0.640 vs 0.619), but the 95% intervals overlap.
 
 ## Limitations
 
-- All results come from a single random split. Repeating with several seeds would give error bars.
 - Only random forests on one tabular dataset were tested.
-- The attacker is assumed to know the target model type.
+- The shadow attack assumes the attacker knows the model type.
+- Defenses were tested against the confidence attack only.
 
 ## Future work
 
-- Add a differential privacy defense (DP-SGD with a neural network) and compare its privacy-accuracy trade-off with regularization
-- Implement a stronger attack such as LiRA (Carlini et al., 2022)
-- Repeat the experiments with neural networks and image data
+- Differential privacy (DP-SGD) compared with regularization
+- A stronger attack such as LiRA (Carlini et al., 2022)
+- Neural networks and image data
 
 ## Project structure
 
 ```
-memorization_and_privacy.ipynb   notebook with all experiments
-figures/                         charts saved by the notebook
+membership_inference_attacks.ipynb             all experiments
+figures/                                       11 figures saved by the notebook
+Membership_Inference_Attacks_Documentation.docx   full project write-up
 requirements.txt
 ```
 
@@ -97,7 +107,7 @@ requirements.txt
 
 ```
 pip install -r requirements.txt
-jupyter notebook memorization_and_privacy.ipynb
+jupyter notebook membership_inference_attacks.ipynb
 ```
 
 ## References
