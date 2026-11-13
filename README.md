@@ -1,6 +1,7 @@
 # Membership Inference Attacks: Measuring Training Data Leakage and Defenses
 
 Can someone tell whether a person's record was used to train a model? This project trains income prediction models on the Adult Census dataset, attacks them with two membership inference attacks, studies what makes leakage worse, and tests three defenses.
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24187133.svg)](https://doi.org/10.5281/zenodo.24187133)
 
 **Author:** Aakash Tiwari, M.S. Cybersecurity, Rowan University
