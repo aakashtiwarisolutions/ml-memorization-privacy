@@ -101,7 +101,9 @@ Records with rare profiles (native country and occupation shared by fewer than 2
 ```
 membership_inference_attacks.ipynb             all experiments
 figures/                                       11 figures saved by the notebook
-Membership_Inference_Attacks_Documentation.docx   full project write-up
+Membership_Inference_Attacks_Documentation.pdf    full project write-up
+Membership_Inference_Attacks_Documentation.docx   editable Word version
+
 requirements.txt
 ```
 
